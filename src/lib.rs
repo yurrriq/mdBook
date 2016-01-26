@@ -71,6 +71,7 @@
 
 #[macro_use]
 pub mod macros;
+pub mod error;
 pub mod book;
 mod parse;
 pub mod renderer;
