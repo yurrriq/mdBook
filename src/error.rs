@@ -10,9 +10,9 @@ pub struct ErrorList {
 
 #[derive(Debug, Clone)]
 pub struct BookError {
-    kind: ErrorKind,
-    message: String,
-    details: String,
+    pub kind: ErrorKind,
+    pub message: String,
+    pub details: String,
 }
 
 #[derive(Debug, Clone)]
@@ -49,6 +49,10 @@ impl ErrorList {
 
     pub fn is_empty(&self) -> bool {
         self.errors.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.errors.len()
     }
 }
 
@@ -125,6 +129,20 @@ impl From<io::Error> for BookError {
     fn from(io_error: io::Error) -> Self {
         let mut error = BookError::from(io_error.description());
         let mut cause_error: &Error = &io_error;
+
+        while let Some(cause) = cause_error.cause() {
+            error.add_details(cause.description());
+            cause_error = cause;
+        }
+
+        error
+    }
+}
+
+impl From<Box<Error>> for BookError {
+    fn from(std_error: Box<Error>) -> Self {
+        let mut error = BookError::from(std_error.description());
+        let mut cause_error: &Error = &*std_error;
 
         while let Some(cause) = cause_error.cause() {
             error.add_details(cause.description());

@@ -26,6 +26,7 @@ use std::sync::mpsc::channel;
 
 
 use mdbook::MDBook;
+use mdbook::{BookError, ErrorList};
 
 const NAME: &'static str = "mdbook";
 
@@ -64,8 +65,14 @@ fn main() {
         (_, _)                       => unreachable!()
     };
 
-    if let Err(e) = res {
-        writeln!(&mut io::stderr(), "An error occured:\n{}", e).ok();
+    if let Err(err_list) = res {
+        println!("{} errors occured", err_list.len());
+
+        for error in err_list {
+            println!("\n----------------------------------------------------------------------\n");
+            println!("ERROR: {}", error.message);
+            println!("DETAILS: {}", error.details);
+        }
     }
 }
 
@@ -83,13 +90,17 @@ fn confirm() -> bool {
 
 
 // Init command implementation
-fn init(args: &ArgMatches) -> Result<(), Box<Error>> {
+fn init(args: &ArgMatches) -> Result<(), ErrorList> {
 
     let book_dir = get_book_dir(args);
     let mut book = MDBook::new(&book_dir);
 
+    let mut errors = ErrorList::new();
+
     // Call the function that does the initialization
-    try!(book.init());
+    if let Err(e) = book.init() {
+        errors.add(BookError::from(e));
+    }
 
     // If flag `--theme` is present, copy theme to src
     if args.is_present("theme") {
@@ -110,7 +121,10 @@ fn init(args: &ArgMatches) -> Result<(), Box<Error>> {
         }
 
         // Call the function that copies the theme
-        try!(book.copy_theme());
+        if let Err(e) = book.copy_theme() {
+            errors.add(BookError::from(e))
+        }
+
         println!("\nTheme copied.");
 
     }
@@ -122,11 +136,15 @@ fn init(args: &ArgMatches) -> Result<(), Box<Error>> {
 
 
 // Build command implementation
-fn build(args: &ArgMatches) -> Result<(), Box<Error>> {
+fn build(args: &ArgMatches) -> Result<(), ErrorList> {
     let book_dir = get_book_dir(args);
     let mut book = MDBook::new(&book_dir).read_config();
 
-    try!(book.build());
+
+    let mut errors = ErrorList::new();
+    if let Err(e) = book.build() {
+        errors.add(BookError::from(e));
+    }
 
     Ok(())
 }
@@ -134,7 +152,7 @@ fn build(args: &ArgMatches) -> Result<(), Box<Error>> {
 
 // Watch command implementation
 #[cfg(feature = "watch")]
-fn watch(args: &ArgMatches) -> Result<(), Box<Error>> {
+fn watch(args: &ArgMatches) -> Result<(), ErrorList> {
     let book_dir = get_book_dir(args);
     let book = MDBook::new(&book_dir).read_config();
 
@@ -202,11 +220,14 @@ fn watch(args: &ArgMatches) -> Result<(), Box<Error>> {
 
 
 
-fn test(args: &ArgMatches) -> Result<(), Box<Error>> {
+fn test(args: &ArgMatches) -> Result<(), ErrorList> {
     let book_dir = get_book_dir(args);
     let mut book = MDBook::new(&book_dir).read_config();
 
-    try!(book.test());
+    let mut errors = ErrorList::new();
+    if let Err(e) = book.test() {
+        errors.add(BookError::from(e));
+    }
 
     Ok(())
 }
